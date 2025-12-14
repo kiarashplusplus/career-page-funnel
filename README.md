@@ -707,6 +707,12 @@ python -m src.cli stats
 # Search for jobs
 python -m src.cli search -q "software engineer" -l "remote"
 python -m src.cli search -c "Stripe" --limit 50
+
+# Export jobs to files
+python -m src.cli export -f csv -o exports/all_jobs.csv
+python -m src.cli export -f json --level entry -o exports/entry_level.json
+python -m src.cli export -f jsonl --company Amazon -o exports/amazon.jsonl
+python -m src.cli export --summary  # Show export summary without exporting
 ```
 
 ### Available Scrapers
@@ -716,6 +722,37 @@ python -m src.cli search -c "Stripe" --limit 50
 | `greenhouse` | ATS | `scrape greenhouse {board_token}` | 10k+ companies use Greenhouse |
 | `lever` | ATS | `scrape lever {company_slug}` | Common for tech startups |
 | `amazon_jobs` | Direct | `scrape amazon_jobs {category}` | Categories: software-development, machine-learning-science, etc. |
+
+### Export Formats
+
+Export jobs to CSV, JSON, or JSONL for analysis, sharing, or integration:
+
+```bash
+# Export all jobs to CSV
+python -m src.cli export -f csv -o exports/jobs.csv
+
+# Export with filters
+python -m src.cli export -f json --level entry -o exports/entry_level.json
+python -m src.cli export -f csv --company "Amazon" --location "Seattle"
+
+# Include job descriptions (larger files)
+python -m src.cli export -f json --include-description -o exports/jobs_full.json
+
+# Compact JSON (no formatting)
+python -m src.cli export -f json --compact -o exports/jobs.json
+
+# JSONL format (one job per line, great for streaming)
+python -m src.cli export -f jsonl -o exports/jobs.jsonl
+
+# View export summary without exporting
+python -m src.cli export --summary
+```
+
+| Format | Use Case | File Size |
+|--------|----------|-----------|
+| `csv` | Spreadsheets, data analysis | Smallest |
+| `json` | APIs, web apps | Medium (with metadata) |
+| `jsonl` | Streaming, data pipelines | Medium (no metadata) |
 
 ### Amazon Jobs Categories
 

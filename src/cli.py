@@ -269,6 +269,85 @@ async def cmd_search(args):
         db.close()
 
 
+async def cmd_export(args):
+    """Export jobs to CSV/JSON."""
+    from src.export import JobExporter, ExportOptions
+    from pathlib import Path
+    
+    db, engine = get_db_session()
+    init_database(engine)
+    
+    try:
+        exporter = JobExporter(db)
+        
+        # Build export options
+        options = ExportOptions(
+            company=args.company,
+            location=args.location,
+            source_type=args.source,
+            experience_level=args.level,
+            active_only=not args.include_inactive,
+            redistributable_only=not args.all_sources,
+            include_description=args.include_description,
+            include_source_info=True,
+            limit=args.limit,
+        )
+        
+        # Show summary if requested
+        if args.summary:
+            summary = exporter.get_export_summary(options)
+            print(f"\n📊 Export Summary")
+            print(f"{'='*60}")
+            print(f"  Total jobs: {summary['total_jobs']}")
+            print(f"\n  Top Companies:")
+            for item in summary['top_companies'][:5]:
+                print(f"    - {item['company']}: {item['count']} jobs")
+            print(f"\n  By Experience Level:")
+            for level, count in summary['by_experience_level'].items():
+                print(f"    - {level}: {count}")
+            print()
+            return 0
+        
+        # Determine output path
+        if args.output:
+            output_path = Path(args.output)
+        else:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            ext = args.format
+            output_path = Path(f"exports/jobs_{timestamp}.{ext}")
+        
+        # Ensure exports directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        print(f"\n📤 Exporting jobs...")
+        print(f"   Format: {args.format.upper()}")
+        print(f"   Output: {output_path}")
+        
+        # Run export
+        if args.format == "csv":
+            result = exporter.export_csv(options, output_path)
+        elif args.format == "jsonl":
+            result = exporter.export_jsonl(options, output_path)
+        else:  # json
+            result = exporter.export_json(options, output_path, pretty=not args.compact)
+        
+        if result.success:
+            print(f"\n✅ Export complete!")
+            print(f"   Jobs exported: {result.job_count}")
+            print(f"   File: {result.file_path}")
+            print(f"   Duration: {result.duration_seconds:.2f}s")
+        else:
+            print(f"\n❌ Export failed:")
+            for error in result.errors:
+                print(f"   - {error}")
+            return 1
+        
+        return 0
+        
+    finally:
+        db.close()
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Career Page Funnel - Job Aggregation Pipeline",
@@ -282,6 +361,9 @@ Examples:
   %(prog)s stats                        Show pipeline statistics
   %(prog)s search -q "software engineer" -l "remote"
                                         Search for jobs
+  %(prog)s export -f csv -o jobs.csv    Export all jobs to CSV
+  %(prog)s export -f json --level entry Export entry-level jobs to JSON
+  %(prog)s export --summary             Show export summary
         """
     )
     
@@ -315,6 +397,31 @@ Examples:
     search_parser.add_argument("-n", "--limit", type=int, default=20,
                                help="Max results (default: 20)")
     
+    # Export command
+    export_parser = subparsers.add_parser("export", help="Export jobs to CSV/JSON")
+    export_parser.add_argument("-f", "--format", choices=["csv", "json", "jsonl"],
+                               default="csv", help="Export format (default: csv)")
+    export_parser.add_argument("-o", "--output", help="Output file path")
+    export_parser.add_argument("-c", "--company", help="Filter by company name")
+    export_parser.add_argument("-l", "--location", help="Filter by location")
+    export_parser.add_argument("-s", "--source", 
+                               choices=["greenhouse", "lever", "ashby", "amazon_jobs"],
+                               help="Filter by source type")
+    export_parser.add_argument("--level", 
+                               choices=["intern", "entry", "mid", "senior", "lead", "staff"],
+                               help="Filter by experience level")
+    export_parser.add_argument("-n", "--limit", type=int, help="Max jobs to export")
+    export_parser.add_argument("--include-description", action="store_true",
+                               help="Include job descriptions in export")
+    export_parser.add_argument("--include-inactive", action="store_true",
+                               help="Include inactive/closed jobs")
+    export_parser.add_argument("--all-sources", action="store_true",
+                               help="Include non-redistributable sources")
+    export_parser.add_argument("--compact", action="store_true",
+                               help="Compact JSON output (no indentation)")
+    export_parser.add_argument("--summary", action="store_true",
+                               help="Show export summary without exporting")
+    
     args = parser.parse_args()
     
     if args.command is None:
@@ -330,6 +437,8 @@ Examples:
         return asyncio.run(cmd_stats(args))
     elif args.command == "search":
         return asyncio.run(cmd_search(args))
+    elif args.command == "export":
+        return asyncio.run(cmd_export(args))
     
     return 1
 
