@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy JobSpy source
+COPY references/scrapers/JobSpy/pyproject.toml .
+COPY references/scrapers/JobSpy/jobspy/ ./jobspy/
+
+# Install JobSpy
+RUN pip install --no-cache-dir poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi
+
+# Working directory will be mounted at runtime
+WORKDIR /app
+
+# Default: start Python shell with jobspy available
+CMD ["python", "-c", "from jobspy import scrape_jobs; print('JobSpy ready. Use scrape_jobs() to search.')"]

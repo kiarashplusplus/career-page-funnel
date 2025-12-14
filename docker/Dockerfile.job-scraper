@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for Selenium/Chrome
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    curl \
+    wget \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements from job-scraper reference
+COPY references/scrapers/job-scraper/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Working directory will be mounted at runtime
+WORKDIR /app
+
+CMD ["python", "-m", "company_scraper.main"]

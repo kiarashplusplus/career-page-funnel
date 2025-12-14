@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # CORE SERVICES
+  # =============================================================================
+  
+  db:
+    image: postgres:16-alpine
+    container_name: cpf-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cpf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cpf_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-jobs}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cpf}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cpf-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # MAIN APPLICATION
+  # =============================================================================
+  
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: cpf-app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-cpf}:${POSTGRES_PASSWORD:-cpf_secret}@db:5432/${POSTGRES_DB:-jobs}
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./src:/app/src:ro
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+
+  # =============================================================================
+  # REFERENCE IMPLEMENTATIONS (Selectable via profiles)
+  # =============================================================================
+  
+  # AI Job Scraper - Most advanced reference (SQLite, Streamlit UI)
+  # Usage: docker compose --profile ai-scraper up ai-job-scraper
+  ai-job-scraper:
+    build:
+      context: ./references/scrapers/ai-job-scraper
+      dockerfile: Dockerfile
+    container_name: cpf-ref-ai-job-scraper
+    profiles: ["ai-scraper", "all-refs"]
+    volumes:
+      - ./references/scrapers/ai-job-scraper:/app
+      - ai_scraper_data:/app/data
+    ports:
+      - "8501:8501"  # Streamlit UI
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+
+  # Job Scraper - Company scrapers with notifications
+  # Usage: docker compose --profile job-scraper up job-scraper
+  job-scraper:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.job-scraper
+    container_name: cpf-ref-job-scraper
+    profiles: ["job-scraper", "all-refs"]
+    volumes:
+      - ./references/scrapers/job-scraper:/app
+      - job_scraper_data:/app/data
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - EMAIL_ADDRESS=${EMAIL_ADDRESS:-}
+      - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD:-}
+
+  # JobSpy - Multi-board scraper library (personal use only)
+  # Usage: docker compose --profile jobspy up jobspy
+  jobspy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.jobspy
+    container_name: cpf-ref-jobspy
+    profiles: ["jobspy", "all-refs"]
+    volumes:
+      - ./references/scrapers/JobSpy:/app
+      - jobspy_data:/app/output
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+
+  # Ready to Touch - Go-based platform
+  # Usage: docker compose --profile readytotouch up readytotouch
+  readytotouch:
+    build:
+      context: ./references/platforms/readytotouch
+      dockerfile: docker/Dockerfile
+    container_name: cpf-ref-readytotouch
+    profiles: ["readytotouch", "all-refs"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./references/platforms/readytotouch:/app
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-cpf}:${POSTGRES_PASSWORD:-cpf_secret}@db:5432/${POSTGRES_DB:-jobs}
+      - REDIS_URL=redis://redis:6379
+
+volumes:
+  postgres_data:
+  redis_data:
+  ai_scraper_data:
+  job_scraper_data:
+  jobspy_data:

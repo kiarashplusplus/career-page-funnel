@@ -1,0 +1,177 @@
+{% comment %}
+    https://github.com/readytotouch/golang-companies-organizer
+{% endcomment %}
+
+{%- func OrganizerStatic(companies []Company, universities []University) -%}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Golang companies organizer</title>
+    <meta name="description" content="Golang companies organizer">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="author" type="text/plain" href="https://readytotouch.com/humans.txt"/>
+    <meta property="og:image" content="/assets/images/og/organizers-light.jpg">
+
+    {%= favicon() %}
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+    {%= organizerStyles() %}
+</head>
+
+<body>
+<header class="header">
+	<div class="header__wrapper">
+		<a href="/" class="header__logo">
+			<img class="header__logo-img" src="/assets/images/pages/online/logo.svg" alt="logo">
+			<h3 class="header__logo-title">ReadyToTouch</h3>
+		</a>
+		<div class="header__stars">
+			<iframe src="https://ghbtns.com/github-btn.html?user=readytotouch&repo=readytotouch&type=star&count=true&size=large" frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+		</div>
+	</div>
+</header>
+<main class="main-wrapper">
+    <div class="main-container">
+        <section class="organizer">
+            <div class="wrapper">
+                <div class="organizer__table-container">
+                    <div class="table__header-top">
+                        <p class="table__result-counter">{%d len(companies) %} companies</p>
+                    </div>
+                    <table class="organizer__table table">
+                        <thead class="organizer__head">
+                            <tr>
+                                <th>
+                                    <span>Name</span>
+                                </th>
+                                <th>
+                                    <img src="/assets/images/pages/common-images/linkedin.svg" alt="linkedin">
+                                    <span>LinkedIn</span>
+                                </th>
+                                <th>
+                                    <img src="/assets/images/pages/online/github-black.svg" alt="github-black">
+                                    <span>GitHub</span>
+                                </th>
+                                <th>
+                                    <img src="/assets/images/pages/common-images/glassdoor.svg" alt="glassdoor">
+                                    <span>Glassdoor</span>
+                                </th>
+                                <th>
+                                    <img src="/assets/images/pages/common-images/SimilarWeb.svg" alt="SimilarWeb">
+                                    <span>SimilarWeb</span>
+                                </th>
+                                <th>
+                                    <img src="/assets/images/pages/common-images/otta.svg" alt="otta">
+                                    <span>Otta</span>
+                                </th>
+                                <th>
+                                    <img src="/assets/images/pages/common/link.svg" alt="link">
+                                    <span>Jobs</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for _, company := range companies %}
+                            <tr class="table__item">
+                                <td>
+                                    <div class="table__item name">
+                                        <a class="table__item-link" href="{%s company.Website %}" target="_blank">{%s company.Name %}</a>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="table__item">
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/square.svg">
+                                            <a class="table__item-link" href="https://www.linkedin.com/company/{%s company.LinkedInProfile.Alias %}/" target="_blank" title="{%s company.LinkedInProfile.Name %}">Overview</a>
+                                        </div>
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/response.svg">
+                                            <a class="table__item-link" href="{%s linkedinConnectionsURL([]Company{company}, universities) %}" target="_blank" title="{%s company.LinkedInProfile.Name %}">Connections</a>
+                                        </div>
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/vacancy/briefcase.svg">
+                                            <a class="table__item-link" href="{%s linkedinJobsURL([]Company{company}, golangKeywordsTitles) %}" target="_blank" title="{%s company.LinkedInProfile.Name %}">Jobs</a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="table__item">
+                                        {%- if company.GitHubProfile.Login != "" -%}
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/square.svg">
+                                            <a class="table__item-link" href="https://github.com/{%s company.GitHubProfile.Login %}" target="_blank">Overview</a>
+                                        </div>
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/database.svg">
+                                            <a class="table__item-link" href="https://github.com/orgs/{%s company.GitHubProfile.Login %}/repositories?q=lang:go" target="_blank">Repositories</a>&nbsp;({%d fetchGitHubRepositoriesCount(company, Go) %})
+                                        </div>
+                                        {%- endif -%}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="table__item">
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/square.svg">
+                                            <a class="table__item-link" href="{%s company.GlassdoorProfile.OverviewURL %}" target="_blank">Overview</a>
+                                        </div>
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/message.svg">
+                                            <a class="table__item-link" href="{%s company.GlassdoorProfile.ReviewsURL %}" target="_blank">Reviews</a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="table__item">
+                                        <div class="table__link-group">
+                                            <img src="/assets/images/pages/common/square.svg">
+                                            <a class="table__item-link" href="{%s similarwebURL(company.Website) %}">Overview</a>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="table__item">
+                                        {%- if company.OttaProfileSlug != "" -%}
+                                            <div class="table__link-group">
+                                                <img src="/assets/images/pages/common/square.svg">
+                                                <a class="table__item-link" href="https://app.otta.com/companies/{%s company.OttaProfileSlug %}" target="_blank">Overview</a>
+                                            </div>
+                                        {%- endif -%}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="table__item">
+                                        {%- for i, vacancy := range company.Languages[Go].Vacancies -%}
+                                            <a class="table__item-link vacancies" href="{%s vacancy.URL %}" target="_blank">Vacancy #{%d i %}</a>
+                                        {%- endfor -%}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="organizer__linkedin">
+                    <h2 class="headline headline--lvl1 organizer__block-title">LinkedIn</h2>
+                    <div class="organizer__links">
+                        <a class="organizer__link" href="{%s linkedinConnectionsURL(companies, nil) %}" target="_blank">LinkedIn Connections [Companies]</a>
+                        {% if len(universities) > 0 %}
+                            <a class="organizer__link" href="{%s linkedinConnectionsURL(companies, universities) %}" target="_blank">LinkedIn Connections [Companies] [Universities]</a>
+                        {% endif %}
+                        <a class="organizer__link" href="{%s linkedinJobsURL(companies, golangKeywordsTitles) %}" target="_blank">LinkedIn Jobs [Companies] [Worldwide]</a>
+                        <a class="organizer__link" href="{%s linkedinJobsURL(nil, golangKeywordsTitles) %}" target="_blank">LinkedIn Jobs [Worldwide]</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+{%= footer() %}
+
+</body>
+</html>
+{%- endfunc -%}

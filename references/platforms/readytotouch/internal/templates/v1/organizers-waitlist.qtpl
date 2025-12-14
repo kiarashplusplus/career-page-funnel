@@ -1,0 +1,170 @@
+{%- func OrganizersWaitlist(organizerFeature OrganizerFeature, headerProfiles []SocialProviderUser, authQueryParams string, subscribedState bool) -%}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>Find jobs from companies using {%s organizerFeature.Organizer.Title %} | ReadyToTouch</title>
+	<meta name="title" content="Find jobs from companies using {%s organizerFeature.Organizer.Title %} | ReadyToTouch">
+	<meta name="description" content="{%s organizerFeature.Organizer.Description %}">
+	<meta name="keywords" content="{%s organizerFeature.Organizer.Keywords %}">
+
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<link rel="author" type="text/plain" href="https://readytotouch.com/humans.txt"/>
+	<meta property="og:image" content="/assets/images/og/organizers-light.jpg">
+
+    {%= favicon() %}
+    {%= organizersFonts() %}
+    {%= organizersWaitlistStyles() %}
+	<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.52.0"></script>
+    {%= plausibleAnalytics() %}
+    {%= ga() %}
+</head>
+
+<body class="organizer-inner">
+<main class="main-wrapper">
+	<header class="header">
+  <div class="header__wrapper">
+    <a href="/organizers" class="header__logo">
+      <img
+        width="30"
+        height="30"
+        class="header__logo-img"
+        src="/assets/images/pages/organizer/{%s organizerFeature.Organizer.Logo %}"
+        alt="organizer logo"
+      />
+      <span class="header__logo-label">Organizer</span>
+    </a>
+    {% code var navigation = toFeatureNavigation(organizerFeature.Path) %}
+    <ul class="header__nav">
+      <li class="header__nav-item">
+        <a href="/{%s organizerFeature.Organizer.Alias %}/companies" class="header__nav-link {%s navigation.companiesActive %}">Companies</a>
+      </li>
+      <li class="header__nav-item">
+        <a href="/{%s organizerFeature.Organizer.Alias %}/jobs" class="header__nav-link {%s navigation.vacanciesActive %}">Jobs</a>
+      </li>
+      {% comment %}
+      <li class="header__nav-item">
+        <a href="/{%s organizerFeature.Organizer.Alias %}/communities" class="header__nav-link">Communities</a>
+      </li>
+      {% endcomment %}
+    </ul>
+    {%= organizersHeaderStarsV1() %}
+    {% if len(headerProfiles) > 0 %}
+    {%= organizersHeaderProfileV1(headerProfiles) %}
+    {% else %}
+    <a href="/{%s organizerFeature.Organizer.Alias %}/welcome{%s authQueryParams %}" class="button button--small-padding button--black header__login-button">Log in</a>
+    {% endif %}
+  </div>
+</header>
+
+<div class="container">
+  <nav aria-label="breadcrumb" aria-labelledby="navigation through the bread crumbs" class="breadcrumb">
+    <ul class="breadcrumb__list">
+      <li class="breadcrumb__item">
+        <a class="breadcrumb__link" href="/">Main</a>
+      </li>
+      <li class="breadcrumb__item">
+        <a class="breadcrumb__link" href="/organizers">Organizers</a>
+      </li>
+      <li class="breadcrumb__item">
+        <a class="breadcrumb__link" href="javascript:void(0);">{%s organizerFeature.Organizer.Title %}</a>
+      </li>
+      <li class="breadcrumb__item">
+        <span class="breadcrumb__page" aria-current="page">{%s organizerFeature.Title %}</span>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+<section class="hero">
+  <div class="container hero__container">
+    <div class="hero__overlay">
+      <img
+        class="hero__image"
+        width="56"
+        height="67"
+        srcset="/assets/images/pages/organizer/eyes@2x.png 2x"
+        src="/assets/images/pages/organizer/eyes.png"
+        alt="eyes icon"
+      />
+      <h1 class="hero__headline">You've come across something we're still working on</h1>
+      {% code
+        var (
+            subscribeStateClass   = ""
+            unsubscribeStateClass = ""
+        )
+
+        if subscribedState {
+            subscribeStateClass = "d-none"
+        } else {
+            unsubscribeStateClass = "d-none"
+        }
+      %}
+      <p class="hero__description hero__description--with-icon js-feature-unsubscribe {%s unsubscribeStateClass %}">
+        <img
+          class="hero__description-image"
+          width="20"
+          height="20"
+          srcset="/assets/images/pages/organizer/check-mark@2x.png 2x"
+          src="/assets/images/pages/organizer/check-mark.png"
+          alt="check mar icon"
+        />
+        You are subscribed to be notified when this page is available
+      </p>
+      <a href="javascript:void(0);" class="button button--small-padding button--bordered-gray hero__button js-feature-unsubscribe {%s unsubscribeStateClass %}">Unsubscribe</a>
+
+      <p class="hero__description js-feature-subscribe {%s subscribeStateClass %}">Subscribe to be notified when this page is available</p>
+      <a href="javascript:void(0);" class="button button--small-padding button--black hero__button js-feature-subscribe {%s subscribeStateClass %}">Subscribe</a>
+    </div>
+  </div>
+</section>
+
+<section class="project-statistics">
+  <div class="container project-statistics__container">
+    <div class="stats">
+      <div class="stats__item">
+        <div class="stats__header">
+          <h3 class="stats__title">Page views</h3>
+        </div>
+        <div class="stats__counters">
+          <div class="stats__counters-item">
+            <p class="stats__counters-views">Total views</p>
+            <p class="stats__counters-item-number js-stats-total-views">∞</p>
+          </div>
+          <div class="stats__counters-item">
+            <p class="stats__counters-views">Last month's views</p>
+            <p class="stats__counters-item-number js-stats-last-month-views">∞</p>
+          </div>
+        </div>
+        <div class="stats__chart stats__chart--page-views-statistics js-chart-views-statistics"></div>
+      </div>
+      <div class="stats__item">
+        <div class="stats__header">
+          <h3 class="stats__title">Subscribers</h3>
+        </div>
+        <div class="stats__counters">
+          <div class="stats__counters-item">
+            <p class="stats__counters-views">Total subscribers</p>
+            <p class="stats__counters-item-number js-stats-total-subscribers">∞</p>
+          </div>
+          <div class="stats__counters-item">
+            <p class="stats__counters-views">Last month’s subscribers</p>
+            <p class="stats__counters-item-number js-stats-last-month-subscribers">∞</p>
+          </div>
+        </div>
+        <div class="stats__chart">
+          <div class="stats__chart stats__chart--subscribers-statistics js-chart-subscribers-statistics"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+</main>
+{%= organizersFooterV1() %}
+<script src="/assets/js/waitlist-stats-app.js?{%d appVersion %}"></script>
+</body>
+</html>
+{%- endfunc -%}

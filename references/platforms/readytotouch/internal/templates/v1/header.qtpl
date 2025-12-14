@@ -1,0 +1,56 @@
+{% func header(profiles []SocialProviderUser) %}
+<header class="header">
+	<div class="header__wrapper">
+		<a href="/" class="header__logo">
+			<img class="header__logo-img" src="/assets/images/pages/online/logo.svg" alt="logo">
+			<h3 class="header__logo-title">ReadyToTouch</h3>
+		</a>
+		<div class="header__stars">
+			<iframe src="https://ghbtns.com/github-btn.html?user=readytotouch&repo=readytotouch&type=star&count=true&size=large"
+				frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+		</div>
+		{% if len(profiles) > 0 %}
+		<div class="header__profile">
+			<button class="header__profile-button">
+				<img src="{%s SocialProviderUserHeaderPhoto(profiles) %}" alt="Profile photo">
+			</button>
+			<div class="header__modal modal-profile">
+				<div class="modal-profile__profile">
+					<img src="{%s SocialProviderUserHeaderPhoto(profiles) %}" class="modal-profile__user-photo" width="48" height="48" alt="Profile photo">
+					<div class="modal-profile__profile-info">
+						<div class="modal-profile__profile-name">{%s SocialProviderUserName(profiles[0]) %}</div>
+						{% for _, profile := range profiles %}
+						{% switch profile.SocialProvider %}
+						{% case github %}
+						<a href="https://github.com/{%s profile.Username %}" target="_blank" class="modal-profile__link">
+							<img src="/assets/images/pages/online/github-black.svg" width="20" height="20" alt="link">
+							<span class="modal-profile__profile-github">github.com/{%s profile.Username %}</span>
+						</a>
+						{% case gitlab %}
+						<a href="https://gitlab.com/{%s profile.Username %}" target="_blank" class="modal-profile__link">
+							<img src="/assets/images/pages/online/gitlab.png" width="20" height="20" alt="link">
+							<span class="modal-profile__profile-gitlab">gitlab.com/{%s profile.Username %}</span>
+						</a>
+						{% endswitch %}
+						{% endfor %}
+					</div>
+				</div>
+				<div class="modal-profile__log-out">
+					<a href="/logout" class="modal-profile__button">
+						<img src="/assets/images/pages/online/log-out.svg" alt="log-out">
+						<span>Log out</span>
+					</a>
+				</div>
+			</div>
+		</div>
+		{% endif %}
+	</div>
+</header>
+{% if len(profiles) > 0 %}
+<script>
+	document.querySelector(".header__profile-button").addEventListener("click", function () {
+		document.querySelector(".header__modal").classList.toggle("active");
+	})
+</script>
+{% endif %}
+{% endfunc %}

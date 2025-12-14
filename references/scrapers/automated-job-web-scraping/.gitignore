@@ -1,0 +1,5 @@
+node_modules/
+.vscode/*
+credentials.js
+executables/*
+backups/*
