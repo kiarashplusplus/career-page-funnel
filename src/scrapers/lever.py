@@ -1,4 +1,21 @@
-"""Lever ATS scraper - uses public job posting API."""
+"""
+Lever ATS scraper - uses public job posting API.
+
+Lever provides a public JSON API for job postings at:
+    https://api.lever.co/v0/postings/{company}
+
+NOTE: Many companies have migrated away from Lever to other ATS platforms
+(Greenhouse, Ashby, Workday, etc.). If you get a 404 error, the company
+may no longer use Lever for their job postings.
+
+Verified working companies (as of Dec 2024):
+- plaid (76 jobs)
+- spotify (123 jobs)
+- palantir (230 jobs)
+
+To verify if a company uses Lever, check if their careers page 
+redirects to jobs.lever.co/{company}
+"""
 
 import asyncio
 import logging
@@ -11,6 +28,11 @@ from .base import BaseScraper
 logger = logging.getLogger(__name__)
 
 
+class LeverCompanyNotFoundError(Exception):
+    """Raised when a company is not found on Lever (likely migrated to another ATS)."""
+    pass
+
+
 class LeverScraper(BaseScraper):
     """
     Scraper for Lever job boards.
@@ -19,6 +41,10 @@ class LeverScraper(BaseScraper):
     https://api.lever.co/v0/postings/{company}
     
     This is the recommended compliant way to access job data.
+    
+    Note: Many companies have migrated away from Lever. Check that
+    the company still uses Lever before scraping (their careers page
+    should redirect to jobs.lever.co/{company}).
     """
     
     SCRAPER_TYPE = "lever"
@@ -54,7 +80,23 @@ class LeverScraper(BaseScraper):
             
             async with session.get(url, params=params) as response:
                 if response.status == 404:
-                    raise Exception(f"Company '{self.company_slug}' not found on Lever")
+                    # Check if it's an error response vs empty results
+                    try:
+                        error_data = await response.json()
+                        if error_data.get("ok") is False:
+                            raise LeverCompanyNotFoundError(
+                                f"Company '{self.company_slug}' not found on Lever. "
+                                f"The company may have migrated to another ATS platform "
+                                f"(Greenhouse, Ashby, Workday, etc.). "
+                                f"Verify at: https://jobs.lever.co/{self.company_slug}"
+                            )
+                    except LeverCompanyNotFoundError:
+                        raise
+                    except Exception:
+                        pass
+                    raise LeverCompanyNotFoundError(
+                        f"Company '{self.company_slug}' not found on Lever"
+                    )
                 if response.status != 200:
                     raise Exception(f"Failed to fetch jobs: HTTP {response.status}")
                 
@@ -156,10 +198,13 @@ async def scrape_lever_company(company_slug: str) -> list[dict]:
     Quick utility to scrape a Lever company without full source setup.
     
     Args:
-        company_slug: The company's Lever slug (e.g., 'figma')
+        company_slug: The company's Lever slug (e.g., 'plaid', 'gusto')
         
     Returns:
         List of raw job dictionaries
+        
+    Raises:
+        LeverCompanyNotFoundError: If the company is not found (may have migrated)
     """
     import aiohttp
     
@@ -172,6 +217,22 @@ async def scrape_lever_company(company_slug: str) -> list[dict]:
         
         while True:
             async with session.get(url, params={"mode": "json", "skip": skip, "limit": limit}) as response:
+                if response.status == 404:
+                    try:
+                        error_data = await response.json()
+                        if error_data.get("ok") is False:
+                            raise LeverCompanyNotFoundError(
+                                f"Company '{company_slug}' not found on Lever. "
+                                f"The company may have migrated to another ATS. "
+                                f"Verify at: https://jobs.lever.co/{company_slug}"
+                            )
+                    except LeverCompanyNotFoundError:
+                        raise
+                    except Exception:
+                        pass
+                    raise LeverCompanyNotFoundError(
+                        f"Company '{company_slug}' not found on Lever"
+                    )
                 if response.status != 200:
                     raise Exception(f"Failed to fetch: HTTP {response.status}")
                 jobs = await response.json()
@@ -197,13 +258,21 @@ if __name__ == "__main__":
     async def main():
         if len(sys.argv) < 2:
             print("Usage: python -m src.scrapers.lever <company_slug>")
-            print("Example: python -m src.scrapers.lever figma")
+            print("Example: python -m src.scrapers.lever plaid")
+            print("\nVerified working companies: plaid, spotify, palantir")
             sys.exit(1)
         
         company_slug = sys.argv[1]
-        jobs = await scrape_lever_company(company_slug)
         
-        print(f"\nFound {len(jobs)} jobs for {company_slug}:\n")
+        try:
+            jobs = await scrape_lever_company(company_slug)
+        except LeverCompanyNotFoundError as e:
+            print(f"\n❌ Error: {e}")
+            print("\nTip: Many companies have migrated away from Lever.")
+            print("Try these verified working companies: plaid, spotify, palantir")
+            sys.exit(1)
+        
+        print(f"\n✅ Found {len(jobs)} jobs for {company_slug}:\n")
         for job in jobs[:10]:  # Show first 10
             print(f"  - {job['text']}")
             categories = job.get("categories", {})
@@ -211,6 +280,13 @@ if __name__ == "__main__":
                 print(f"    Location: {categories['location']}")
             if categories.get("team"):
                 print(f"    Team: {categories['team']}")
+            salary = job.get("salaryRange")
+            if salary:
+                min_sal = salary.get("min", 0)
+                max_sal = salary.get("max", 0)
+                currency = salary.get("currency", "USD")
+                if min_sal or max_sal:
+                    print(f"    Salary: {currency} {min_sal:,} - {max_sal:,}")
             print(f"    URL: {job.get('hostedUrl', 'N/A')}")
             print()
         

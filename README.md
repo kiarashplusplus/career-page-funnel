@@ -102,7 +102,7 @@ Every data source must be registered and reviewed before scraping:
 | Source | Type | API Endpoint | Status | Notes |
 |--------|------|--------------|--------|-------|
 | **Greenhouse** | ATS | `boards-api.greenhouse.io/v1/boards/{company}/jobs` | ✅ TESTED | Public API, works |
-| **Lever** | ATS | `api.lever.co/v0/postings/{company}` | ⚠️ API Changed | Returns 404 - needs investigation |
+| **Lever** | ATS | `api.lever.co/v0/postings/{company}` | ✅ WORKING | API works; many companies migrated away |
 | **Ashby** | ATS | `api.ashbyhq.com/posting-api/job-board/{company}` | ✅ TESTED | Public Posting API |
 | **SimplifyJobs** | Curated | GitHub repositories | ✅ | MIT license |
 
@@ -421,10 +421,11 @@ Coinbase, DoorDash, Instacart, Robinhood, Plaid,
 Square, Shopify, Twitch, Pinterest, Snap, Lyft...
 ```
 
-### Lever Companies (500+ companies)
+### Lever Companies (Active on Lever)
 ```
-Atlassian, MongoDB, Cloudflare, HashiCorp, GitLab,
-Databricks, Scale AI, OpenAI, Anthropic, Vercel...
+Plaid (76 jobs), Spotify (123 jobs), Palantir (230 jobs)...
+(Note: Many companies like Figma, Anthropic, OpenAI, Coinbase 
+ have migrated away from Lever to other ATS platforms)
 ```
 
 ### Direct Career Pages (Major Tech)
