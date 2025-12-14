@@ -690,6 +690,11 @@ cp .env.example .env
 The integrated pipeline handles scraping → deduplication → classification → storage:
 
 ```bash
+# Seed database with 100+ companies (recommended first run)
+python scripts/seed_database.py           # Full seed (~100 companies)
+python scripts/seed_database.py --quick   # Quick seed (~15 companies)
+python scripts/seed_database.py --test    # Test mode (3 companies)
+
 # Scrape a single company (ATS scrapers)
 python -m src.cli scrape greenhouse stripe
 python -m src.cli scrape lever spotify
