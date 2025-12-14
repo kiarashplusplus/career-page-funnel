@@ -289,9 +289,9 @@ Examples:
     
     # Scrape command
     scrape_parser = subparsers.add_parser("scrape", help="Run a single scraper")
-    scrape_parser.add_argument("scraper_type", choices=["greenhouse", "lever"],
+    scrape_parser.add_argument("scraper_type", choices=["greenhouse", "lever", "amazon_jobs"],
                                help="Type of scraper to use")
-    scrape_parser.add_argument("company", help="Company identifier/slug")
+    scrape_parser.add_argument("company", help="Company identifier/slug (or category for amazon_jobs)")
     scrape_parser.add_argument("--no-tfidf", action="store_true",
                                help="Disable TF-IDF similarity detection")
     

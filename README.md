@@ -690,9 +690,13 @@ cp .env.example .env
 The integrated pipeline handles scraping → deduplication → classification → storage:
 
 ```bash
-# Scrape a single company
+# Scrape a single company (ATS scrapers)
 python -m src.cli scrape greenhouse stripe
 python -m src.cli scrape lever spotify
+
+# Scrape Amazon Jobs (direct scraper - by category)
+python -m src.cli scrape amazon_jobs software-development
+python -m src.cli scrape amazon_jobs machine-learning-science
 
 # Batch scrape multiple companies
 python -m src.cli batch greenhouse:stripe,airbnb lever:spotify,plaid
@@ -704,6 +708,24 @@ python -m src.cli stats
 python -m src.cli search -q "software engineer" -l "remote"
 python -m src.cli search -c "Stripe" --limit 50
 ```
+
+### Available Scrapers
+
+| Scraper | Type | Usage | Notes |
+|---------|------|-------|-------|
+| `greenhouse` | ATS | `scrape greenhouse {board_token}` | 10k+ companies use Greenhouse |
+| `lever` | ATS | `scrape lever {company_slug}` | Common for tech startups |
+| `amazon_jobs` | Direct | `scrape amazon_jobs {category}` | Categories: software-development, machine-learning-science, etc. |
+
+### Amazon Jobs Categories
+
+Use these as the "company" argument for amazon_jobs:
+- `software-development`
+- `machine-learning-science`
+- `data-science`
+- `solutions-architect`
+- `project-program-product-management-technical`
+- `systems-quality-security-engineering`
 
 ### Pipeline Features
 

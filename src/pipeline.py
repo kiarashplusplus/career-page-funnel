@@ -34,6 +34,7 @@ from .processing import (
 from .scrapers import BaseScraper, ScraperResult
 from .scrapers.greenhouse import GreenhouseScraper
 from .scrapers.lever import LeverScraper
+from .scrapers.amazon_jobs import AmazonJobsScraper
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,11 @@ SCRAPER_REGISTRY: Dict[str, dict] = {
     "lever": {
         "class": LeverScraper,
         "url_template": "https://api.lever.co/v0/postings/{company}",
+    },
+    "amazon_jobs": {
+        "class": AmazonJobsScraper,
+        "url_template": "https://www.amazon.jobs/en/search",
+        "is_direct": True,  # No company param needed
     },
 }
 
@@ -281,12 +287,16 @@ class JobPipeline:
             raise ValueError(f"Unknown scraper type: {scraper_type}. Available: {list(SCRAPER_REGISTRY.keys())}")
         
         scraper_class = SCRAPER_REGISTRY[scraper_type]["class"]
+        scraper_config = SCRAPER_REGISTRY[scraper_type]
         
         # Different scrapers have different constructors
         if scraper_type == "greenhouse":
             return scraper_class(source, board_token=company)
         elif scraper_type == "lever":
             return scraper_class(source, company_slug=company)
+        elif scraper_type == "amazon_jobs":
+            # Direct scraper - company can be category filter
+            return scraper_class(source, category=company if company != "amazon" else None)
         else:
             # Generic case - just pass source
             return scraper_class(source)

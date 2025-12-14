@@ -37,11 +37,6 @@ def get_session_factory():
     return _SessionLocal
 
 
-def get_engine():
-    """Get the SQLAlchemy engine."""
-    return engine
-
-
 @contextmanager
 def get_db() -> Generator[Session, None, None]:
     """
