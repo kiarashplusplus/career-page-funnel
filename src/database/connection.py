@@ -2,24 +2,39 @@
 
 import os
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-# Get database URL from environment
+# Get database URL from environment - default to SQLite for easy development
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://cpf:cpf_dev_password@localhost:5432/jobs"
+    "sqlite:///jobs.db"  # SQLite by default for easy development
 )
 
-# For SQLite fallback in development
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-else:
-    engine = create_engine(DATABASE_URL)
+# Lazy initialization
+_engine = None
+_SessionLocal = None
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_engine():
+    """Get or create the SQLAlchemy engine."""
+    global _engine
+    if _engine is None:
+        if DATABASE_URL.startswith("sqlite"):
+            _engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+        else:
+            _engine = create_engine(DATABASE_URL)
+    return _engine
+
+
+def get_session_factory():
+    """Get or create the session factory."""
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return _SessionLocal
 
 
 def get_engine():
@@ -36,6 +51,7 @@ def get_db() -> Generator[Session, None, None]:
         with get_db() as db:
             db.execute(...)
     """
+    SessionLocal = get_session_factory()
     db = SessionLocal()
     try:
         yield db
@@ -54,20 +70,66 @@ def init_db() -> None:
     For PostgreSQL, this is handled by init-db.sql in Docker.
     This function is for SQLite development or manual initialization.
     """
-    from sqlalchemy import MetaData
-    
-    # Create tables if they don't exist
-    metadata = MetaData()
+    engine = get_engine()
     
     with engine.connect() as conn:
-        # Check if tables exist
-        result = conn.execute(text(
-            "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'sources')"
-        ))
-        exists = result.scalar()
+        # Check if tables exist (SQLite compatible)
+        try:
+            conn.execute(text("SELECT 1 FROM sources LIMIT 1"))
+            return  # Tables already exist
+        except Exception:
+            pass  # Tables don't exist, create them
         
-        if not exists:
-            # Read and execute init-db.sql
+        # Create tables for SQLite
+        if DATABASE_URL.startswith("sqlite"):
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS sources (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT UNIQUE NOT NULL,
+                    base_url TEXT NOT NULL,
+                    scraper_type TEXT NOT NULL,
+                    compliance_status TEXT DEFAULT 'conditional',
+                    tos_url TEXT,
+                    tos_notes TEXT,
+                    rate_limit_requests INTEGER DEFAULT 10,
+                    rate_limit_period INTEGER DEFAULT 60,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS jobs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id INTEGER NOT NULL,
+                    external_id TEXT,
+                    title TEXT NOT NULL,
+                    company TEXT NOT NULL,
+                    location TEXT,
+                    description TEXT,
+                    url TEXT NOT NULL,
+                    salary_min INTEGER,
+                    salary_max INTEGER,
+                    salary_currency TEXT,
+                    job_type TEXT,
+                    experience_level TEXT,
+                    remote_type TEXT,
+                    content_hash TEXT NOT NULL,
+                    is_active INTEGER DEFAULT 1,
+                    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (source_id) REFERENCES sources(id)
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_hash ON jobs(content_hash)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source_id)"))
+            conn.commit()
+            print("SQLite database initialized")
+        else:
+            # For PostgreSQL, use init-db.sql
             init_sql_path = os.path.join(
                 os.path.dirname(__file__), 
                 "..", "..", "docker", "init-db.sql"

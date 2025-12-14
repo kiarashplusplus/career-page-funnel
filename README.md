@@ -683,15 +683,85 @@ pip install -e .
 # Set up environment
 cp .env.example .env
 # Edit .env with your configuration
+```
 
-# Initialize database
-python -m src.database.init
+### CLI Pipeline
 
-# Run a scraper
-python -m src.scrapers.greenhouse netflix
+The integrated pipeline handles scraping → deduplication → classification → storage:
 
-# Start the scheduler (for continuous scraping)
-python -m src.scheduler
+```bash
+# Scrape a single company
+python -m src.cli scrape greenhouse stripe
+python -m src.cli scrape lever spotify
+
+# Batch scrape multiple companies
+python -m src.cli batch greenhouse:stripe,airbnb lever:spotify,plaid
+
+# Show pipeline statistics
+python -m src.cli stats
+
+# Search for jobs
+python -m src.cli search -q "software engineer" -l "remote"
+python -m src.cli search -c "Stripe" --limit 50
+```
+
+### Pipeline Features
+
+| Feature | Description |
+|---------|-------------|
+| **Deduplication** | Hash-based (SHA256) + optional TF-IDF similarity detection |
+| **Classification** | Auto-detects experience level (entry/mid/senior), job type, remote status |
+| **Normalization** | Standardizes titles (Sr. → Senior), locations (SF → San Francisco), salaries |
+| **Compliance** | Only scrapes from registered, approved sources |
+
+### Python API
+
+```python
+import asyncio
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
+from src.pipeline import JobPipeline
+
+engine = create_engine("sqlite:///jobs.db")
+
+async def main():
+    with Session(engine) as db:
+        pipeline = JobPipeline(db)
+        
+        # Scrape single company
+        stats = await pipeline.run_scraper("greenhouse", "stripe")
+        print(f"Found {stats.new_jobs} new jobs")
+        
+        # Batch scrape
+        batch = await pipeline.run_batch([
+            ("greenhouse", "stripe"),
+            ("greenhouse", "airbnb"),
+            ("lever", "spotify"),
+        ])
+        print(f"Total: {batch.total_new} new jobs")
+
+asyncio.run(main())
+```
+
+### Processing Components
+
+```python
+from src.processing import (
+    DuplicateDetector,  # Hash + TF-IDF deduplication
+    JobClassifier,       # Experience level classification
+    JobNormalizer,       # Title/location/salary normalization
+)
+
+# Classify a job
+classifier = JobClassifier()
+result = classifier.classify("Senior Software Engineer", "5+ years required")
+print(result.experience_level)      # ExperienceLevel.SENIOR
+print(result.is_entry_level_friendly)  # False
+
+# Normalize data
+normalizer = JobNormalizer()
+print(normalizer.normalize_title("Sr. SWE"))  # "Senior Software Engineer"
+print(normalizer.normalize_location("SF, CA"))  # "San Francisco, CA"
 ```
 
 ---

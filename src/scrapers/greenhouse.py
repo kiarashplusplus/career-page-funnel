@@ -93,12 +93,14 @@ class GreenhouseScraper(BaseScraper):
         description = data.get("content", "")
         
         # Greenhouse metadata fields
-        metadata = data.get("metadata", [])
+        metadata = data.get("metadata") or []
         job_type = None
         experience_level = None
         
         for meta in metadata:
-            name = meta.get("name", "").lower()
+            if not isinstance(meta, dict):
+                continue
+            name = (meta.get("name") or "").lower()
             value = meta.get("value")
             if name in ("employment type", "job type", "type"):
                 job_type = value
