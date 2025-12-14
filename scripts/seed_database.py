@@ -2,13 +2,14 @@
 """
 Seed Database Script
 ====================
-Scrapes jobs from 100+ companies using compliant sources (Greenhouse, Lever, Amazon Jobs).
+Scrapes jobs from 100+ companies using compliant sources (Greenhouse, Lever, Ashby, Amazon Jobs).
 
 Usage:
-    python scripts/seed_database.py              # Full seed (~100 companies)
-    python scripts/seed_database.py --quick      # Quick seed (~20 companies)
-    python scripts/seed_database.py --test       # Test mode (3 companies)
+    python scripts/seed_database.py              # Full seed (~70 companies)
+    python scripts/seed_database.py --quick      # Quick seed (~17 companies)
+    python scripts/seed_database.py --test       # Test mode (4 companies)
     python scripts/seed_database.py --category tech  # Only tech companies
+    python scripts/seed_database.py --cleanup    # Remove sources with 0 jobs
 """
 
 import asyncio
@@ -24,136 +25,110 @@ from src.pipeline import JobPipeline
 from src.cli import get_db_session, init_database
 
 # =============================================================================
-# CURATED COMPANY LISTS (Verified Board Tokens)
+# CURATED COMPANY LISTS (Verified December 2024)
 # =============================================================================
 
-# Greenhouse companies (board_token)
-# Format: (board_token, company_name, category)
+# Greenhouse companies (board_token) - VERIFIED WORKING
 GREENHOUSE_COMPANIES = [
-    # --- FAANG & Big Tech ---
+    # --- Fintech ---
     ("stripe", "Stripe", "fintech"),
-    ("airbnb", "Airbnb", "tech"),
-    ("square", "Square/Block", "fintech"),
     ("coinbase", "Coinbase", "crypto"),
     ("robinhood", "Robinhood", "fintech"),
-    ("plaid", "Plaid", "fintech"),
     ("chime", "Chime", "fintech"),
     ("brex", "Brex", "fintech"),
-    ("ramp", "Ramp", "fintech"),
+    ("affirm", "Affirm", "fintech"),
+    ("block", "Block/Square", "fintech"),
+    
+    # --- Big Tech ---
+    ("airbnb", "Airbnb", "tech"),
+    ("pinterest", "Pinterest", "social"),
+    ("dropbox", "Dropbox", "tech"),
+    ("lyft", "Lyft", "tech"),
+    ("instacart", "Instacart", "delivery"),
+    ("doordashusa", "DoorDash", "delivery"),
     
     # --- Developer Tools ---
     ("gitlab", "GitLab", "devtools"),
-    ("notion", "Notion", "productivity"),
     ("figma", "Figma", "design"),
     ("airtable", "Airtable", "productivity"),
     ("webflow", "Webflow", "design"),
-    ("miro", "Miro", "productivity"),
-    ("loom", "Loom", "productivity"),
-    ("zapier", "Zapier", "automation"),
     ("retool", "Retool", "devtools"),
     ("vercel", "Vercel", "devtools"),
-    ("supabase", "Supabase", "devtools"),
-    ("planetscale", "PlanetScale", "devtools"),
-    ("railway", "Railway", "devtools"),
+    ("tailscale", "Tailscale", "infrastructure"),
     
     # --- Social & Consumer ---
     ("discord", "Discord", "social"),
     ("reddit", "Reddit", "social"),
-    ("pinterestearly", "Pinterest", "social"),
-    ("snap", "Snap", "social"),
-    ("bumble", "Bumble", "social"),
     ("duolingo", "Duolingo", "education"),
     
     # --- AI & ML ---
-    ("openai", "OpenAI", "ai"),
     ("anthropic", "Anthropic", "ai"),
-    ("huggingface", "Hugging Face", "ai"),
-    ("stability", "Stability AI", "ai"),
-    ("cohere", "Cohere", "ai"),
-    ("scale", "Scale AI", "ai"),
-    ("anyscale", "Anyscale", "ai"),
-    ("weights", "Weights & Biases", "ai"),
     
-    # --- Enterprise & B2B ---
+    # --- Enterprise & SaaS ---
     ("gusto", "Gusto", "hr"),
-    ("rippling", "Rippling", "hr"),
     ("lattice", "Lattice", "hr"),
-    ("deel", "Deel", "hr"),
     ("remote", "Remote", "hr"),
-    ("ashbyhq", "Ashby", "hr"),
-    ("lever", "Lever", "hr"),
-    
-    # --- Security ---
-    ("snaborofficial", "Snyk", "security"),
-    ("1password", "1Password", "security"),
-    ("crowdstrike", "CrowdStrike", "security"),
-    ("lacework", "Lacework", "security"),
-    ("waborofficial", "Wiz", "security"),
+    ("intercom", "Intercom", "saas"),
+    ("okta", "Okta", "security"),
+    ("twilio", "Twilio", "devtools"),
+    ("cloudflare", "Cloudflare", "infrastructure"),
+    ("amplitude", "Amplitude", "analytics"),
+    ("mixpanel", "Mixpanel", "analytics"),
     
     # --- Data & Analytics ---
     ("databricks", "Databricks", "data"),
-    ("snowflake", "Snowflake", "data"),
-    ("dbt", "dbt Labs", "data"),
     ("fivetran", "Fivetran", "data"),
-    ("airbyte", "Airbyte", "data"),
-    ("hex", "Hex", "data"),
-    ("census", "Census", "data"),
-    
-    # --- Infrastructure ---
-    ("hashicorp", "HashiCorp", "infrastructure"),
-    ("tailscale", "Tailscale", "infrastructure"),
-    ("fly", "Fly.io", "infrastructure"),
-    ("render", "Render", "infrastructure"),
     
     # --- E-commerce ---
-    ("shopify", "Shopify", "ecommerce"),
     ("faire", "Faire", "ecommerce"),
-    ("bolt", "Bolt", "ecommerce"),
-    ("affirm", "Affirm", "fintech"),
-    ("klarna", "Klarna", "fintech"),
     
     # --- Health & Biotech ---
-    ("tempus", "Tempus", "health"),
-    ("color", "Color Health", "health"),
-    ("ro", "Ro", "health"),
-    ("hims", "Hims & Hers", "health"),
     ("modernhealth", "Modern Health", "health"),
+    
+    # --- Autonomous Vehicles ---
+    ("waymo", "Waymo", "av"),
 ]
 
-# Lever companies (company_slug)
-# Format: (company_slug, company_name, category)
+# Lever companies (company_slug) - VERIFIED WORKING
 LEVER_COMPANIES = [
-    # --- Tech ---
     ("spotify", "Spotify", "tech"),
-    ("netflix", "Netflix", "tech"),
-    ("cloudflare", "Cloudflare", "infrastructure"),
-    ("twilio", "Twilio", "devtools"),
+    ("wealthfront", "Wealthfront", "fintech"),
+]
+
+# Ashby companies (company_slug) - VERIFIED WORKING
+ASHBY_COMPANIES = [
+    # --- AI & ML ---
+    ("openai", "OpenAI", "ai"),
+    ("cohere", "Cohere", "ai"),
+    ("perplexity", "Perplexity", "ai"),
+    ("cursor", "Cursor", "ai"),
+    ("modal", "Modal", "ai"),
+    ("runway", "Runway", "ai"),
     
     # --- Fintech ---
-    ("nerdwallet", "NerdWallet", "fintech"),
-    ("wealthfront", "Wealthfront", "fintech"),
-    ("betterment", "Betterment", "fintech"),
+    ("ramp", "Ramp", "fintech"),
+    ("deel", "Deel", "hr"),
     
-    # --- E-commerce & Delivery ---
-    ("instacart", "Instacart", "delivery"),
-    ("doordash", "DoorDash", "delivery"),
-    ("postmates", "Postmates", "delivery"),
+    # --- Developer Tools ---
+    ("notion", "Notion", "productivity"),
+    ("linear", "Linear", "devtools"),
+    ("supabase", "Supabase", "devtools"),
+    ("zapier", "Zapier", "automation"),
+    ("render", "Render", "infrastructure"),
     
-    # --- SaaS ---
-    ("amplitude", "Amplitude", "analytics"),
-    ("mixpanel", "Mixpanel", "analytics"),
-    ("segment", "Segment", "data"),
-    ("intercom", "Intercom", "saas"),
-    ("zendesk", "Zendesk", "saas"),
-    
-    # --- AI/ML ---
-    ("huggingface", "Hugging Face", "ai"),
-    ("replicate", "Replicate", "ai"),
-    ("modal", "Modal", "ai"),
+    # --- Data ---
+    ("snowflake", "Snowflake", "data"),
     
     # --- Security ---
-    ("okta", "Okta", "security"),
-    ("auth0", "Auth0", "security"),
+    ("1password", "1Password", "security"),
+    ("vanta", "Vanta", "security"),
+    
+    # --- Health & Biotech ---
+    ("benchling", "Benchling", "biotech"),
+    
+    # --- Climate & Infrastructure ---
+    ("watershed", "Watershed", "climate"),
+    ("crusoe", "Crusoe Energy", "infrastructure"),
 ]
 
 # Amazon Jobs categories
@@ -170,17 +145,19 @@ def get_companies_by_category(category: str | None = None):
     """Filter companies by category."""
     gh = GREENHOUSE_COMPANIES
     lv = LEVER_COMPANIES
+    ab = ASHBY_COMPANIES
     
     if category:
         category = category.lower()
         gh = [(t, n, c) for t, n, c in gh if c == category]
         lv = [(t, n, c) for t, n, c in lv if c == category]
+        ab = [(t, n, c) for t, n, c in ab if c == category]
     
-    return gh, lv
+    return gh, lv, ab
 
 
 def get_quick_list():
-    """Return a quick list of ~20 high-value companies."""
+    """Return a quick list of ~17 high-value companies."""
     greenhouse = [
         ("stripe", "Stripe", "fintech"),
         ("airbnb", "Airbnb", "tech"),
@@ -192,17 +169,21 @@ def get_quick_list():
         ("databricks", "Databricks", "data"),
         ("figma", "Figma", "design"),
         ("robinhood", "Robinhood", "fintech"),
-        ("chime", "Chime", "fintech"),
-        ("airtable", "Airtable", "productivity"),
     ]
     lever = [
         ("spotify", "Spotify", "tech"),
-        ("netflix", "Netflix", "tech"),
+    ]
+    ashby = [
+        ("openai", "OpenAI", "ai"),
+        ("notion", "Notion", "productivity"),
+        ("ramp", "Ramp", "fintech"),
+        ("linear", "Linear", "devtools"),
+        ("perplexity", "Perplexity", "ai"),
     ]
     amazon = [
         ("software-development", "Amazon Software Development"),
     ]
-    return greenhouse, lever, amazon
+    return greenhouse, lever, ashby, amazon
 
 
 def get_test_list():
@@ -210,13 +191,46 @@ def get_test_list():
     return (
         [("stripe", "Stripe", "fintech")],
         [("spotify", "Spotify", "tech")],
+        [("openai", "OpenAI", "ai")],
         [("software-development", "Amazon Software Development")],
     )
+
+
+async def cleanup_dead_sources(db):
+    """Remove sources that have 0 jobs."""
+    from sqlalchemy import text
+    
+    # Find sources with 0 jobs
+    result = db.execute(text("""
+        SELECT s.id, s.name, s.scraper_type
+        FROM sources s
+        LEFT JOIN jobs j ON j.source_id = s.id
+        GROUP BY s.id
+        HAVING COUNT(j.id) = 0
+    """))
+    dead_sources = result.fetchall()
+    
+    if not dead_sources:
+        print("✅ No dead sources to clean up")
+        return 0
+    
+    print(f"\n🧹 Cleaning up {len(dead_sources)} dead sources:")
+    for source_id, name, scraper_type in dead_sources:
+        print(f"   - {name} ({scraper_type})")
+    
+    # Delete them
+    source_ids = [s[0] for s in dead_sources]
+    db.execute(text(f"DELETE FROM sources WHERE id IN ({','.join(map(str, source_ids))})"))
+    db.commit()
+    
+    print(f"✅ Removed {len(dead_sources)} dead sources")
+    return len(dead_sources)
 
 
 async def run_seed(
     greenhouse_list: list,
     lever_list: list,
+    ashby_list: list,
     amazon_list: list,
     concurrent: int = 3,
     use_tfidf: bool = False,
@@ -251,6 +265,11 @@ async def run_seed(
             sources.append(("lever", slug))
             total_stats["companies_attempted"] += 1
         
+        # Ashby
+        for slug, name, _ in ashby_list:
+            sources.append(("ashby", slug))
+            total_stats["companies_attempted"] += 1
+        
         # Amazon
         for category, name in amazon_list:
             sources.append(("amazon_jobs", category))
@@ -261,6 +280,7 @@ async def run_seed(
         print(f"{'='*70}")
         print(f"  Greenhouse companies: {len(greenhouse_list)}")
         print(f"  Lever companies:      {len(lever_list)}")
+        print(f"  Ashby companies:      {len(ashby_list)}")
         print(f"  Amazon categories:    {len(amazon_list)}")
         print(f"  Total sources:        {len(sources)}")
         print(f"  Concurrent scrapers:  {concurrent}")
@@ -318,18 +338,19 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/seed_database.py              # Full seed (~100 companies)
-  python scripts/seed_database.py --quick      # Quick seed (~20 companies)
-  python scripts/seed_database.py --test       # Test mode (3 companies)
+  python scripts/seed_database.py              # Full seed (~70 companies)
+  python scripts/seed_database.py --quick      # Quick seed (~17 companies)
+  python scripts/seed_database.py --test       # Test mode (4 companies)
   python scripts/seed_database.py --category fintech  # Only fintech companies
   python scripts/seed_database.py --concurrent 5      # More parallelism
+  python scripts/seed_database.py --cleanup    # Remove sources with 0 jobs
         """
     )
     
     parser.add_argument("--quick", action="store_true",
-                        help="Quick seed with ~20 high-value companies")
+                        help="Quick seed with ~17 high-value companies")
     parser.add_argument("--test", action="store_true",
-                        help="Test mode with 3 companies")
+                        help="Test mode with 4 companies")
     parser.add_argument("--category", type=str,
                         help="Filter by category (tech, fintech, ai, devtools, etc.)")
     parser.add_argument("--concurrent", type=int, default=3,
@@ -340,36 +361,61 @@ Examples:
                         help="Only scrape Greenhouse companies")
     parser.add_argument("--lever-only", action="store_true",
                         help="Only scrape Lever companies")
+    parser.add_argument("--ashby-only", action="store_true",
+                        help="Only scrape Ashby companies")
     parser.add_argument("--amazon-only", action="store_true",
                         help="Only scrape Amazon Jobs")
     parser.add_argument("--no-amazon", action="store_true",
                         help="Skip Amazon Jobs")
+    parser.add_argument("--cleanup", action="store_true",
+                        help="Remove sources with 0 jobs before seeding")
     
     args = parser.parse_args()
     
+    # Handle cleanup
+    if args.cleanup:
+        db, engine = get_db_session()
+        init_database(engine)
+        try:
+            asyncio.run(cleanup_dead_sources(db))
+        finally:
+            db.close()
+        
+        # If only cleanup requested, exit
+        if not any([args.quick, args.test, args.category, args.greenhouse_only, 
+                    args.lever_only, args.ashby_only, args.amazon_only]):
+            return 0
+    
     # Determine company lists
     if args.test:
-        greenhouse, lever, amazon = get_test_list()
+        greenhouse, lever, ashby, amazon = get_test_list()
     elif args.quick:
-        greenhouse, lever, amazon = get_quick_list()
+        greenhouse, lever, ashby, amazon = get_quick_list()
     else:
-        greenhouse, lever = get_companies_by_category(args.category)
+        greenhouse, lever, ashby = get_companies_by_category(args.category)
         amazon = AMAZON_CATEGORIES if not args.category else []
     
     # Apply filters
     if args.greenhouse_only:
         lever = []
+        ashby = []
         amazon = []
     elif args.lever_only:
         greenhouse = []
+        ashby = []
+        amazon = []
+    elif args.ashby_only:
+        greenhouse = []
+        lever = []
         amazon = []
     elif args.amazon_only:
         greenhouse = []
         lever = []
+        ashby = []
     elif args.no_amazon:
         amazon = []
     
-    if not greenhouse and not lever and not amazon:
+    if not greenhouse and not lever and not ashby and not amazon:
         print("❌ No companies to scrape with current filters")
         return 1
     
@@ -378,6 +424,7 @@ Examples:
         stats = asyncio.run(run_seed(
             greenhouse_list=greenhouse,
             lever_list=lever,
+            ashby_list=ashby,
             amazon_list=amazon,
             concurrent=args.concurrent,
             use_tfidf=args.tfidf,

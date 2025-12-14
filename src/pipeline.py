@@ -35,6 +35,7 @@ from .scrapers import BaseScraper, ScraperResult
 from .scrapers.greenhouse import GreenhouseScraper
 from .scrapers.lever import LeverScraper
 from .scrapers.amazon_jobs import AmazonJobsScraper
+from .scrapers.ashby import AshbyScraper
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,10 @@ SCRAPER_REGISTRY: Dict[str, dict] = {
     "lever": {
         "class": LeverScraper,
         "url_template": "https://api.lever.co/v0/postings/{company}",
+    },
+    "ashby": {
+        "class": AshbyScraper,
+        "url_template": "https://api.ashbyhq.com/posting-api/job-board/{company}",
     },
     "amazon_jobs": {
         "class": AmazonJobsScraper,
@@ -293,6 +298,8 @@ class JobPipeline:
         if scraper_type == "greenhouse":
             return scraper_class(source, board_token=company)
         elif scraper_type == "lever":
+            return scraper_class(source, company_slug=company)
+        elif scraper_type == "ashby":
             return scraper_class(source, company_slug=company)
         elif scraper_type == "amazon_jobs":
             # Direct scraper - company can be category filter
